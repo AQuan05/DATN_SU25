@@ -1,4 +1,4 @@
-@extends('layouts.adminAnatats')
+@extends('admin.layouts.adminAnatats')
 @section('content')
     @if (session('success'))
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -112,7 +112,7 @@
     </table>
 
     <!-- Phân trang -->
-    <div style="margin-top: 20px;">
-        {{ $products->appends(request()->all())->links() }}
+    <div style="margin-top: 20px; text-align: left !important;">
+        {{ $products->appends(request()->all())->links('pagination::bootstrap-5') }}
     </div>
 @endsection
