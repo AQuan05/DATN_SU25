@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Clients\CommentController;
 use App\Http\Controllers\Clients\OrderController;
 use App\Http\Controllers\Clients\ProductControllerr;
 use Illuminate\Support\Facades\Route;
@@ -16,10 +18,10 @@ use App\Http\Controllers\Admin\ColorController;
 use App\Http\Controllers\Admin\SizeController;
 use App\Http\Controllers\Admin\BlogController;
 use App\Http\Controllers\Admin\CouponController;
-
 // Client Controllers
 use App\Http\Controllers\Client\HomeController;
 use App\Http\Controllers\Clients\CartController;
+use App\Http\Controllers\Clients\CheckoutController;
 use App\Http\Controllers\Clients\HomeController as ClientsHomeController;
 
 // Trang chủ
@@ -28,7 +30,21 @@ Route::get('/', function () {
 });
 
 // Auth
-Auth::routes();
+
+Route::get('/login', [AuthController::class, 'showLogin'])->name('login.form');
+Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::get('/register', [AuthController::class, 'showRegister'])->name('register.form');
+Route::post('/register', [AuthController::class, 'register'])->name('register');
+Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+
+Route::get('/forgot-password', [AuthController::class, 'showForgotForm'])->name('password.request');
+// Xử lý gửi mail/reset token
+Route::post('/forgot-password', [AuthController::class, 'sendResetLink'])->name('password.email');
+
+// Form đổi mật khẩu theo token
+Route::get('/reset-password/{token}', [AuthController::class, 'showResetForm'])->name('password.reset');
+// Xử lý cập nhật mật khẩu mới
+Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
 // Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
 // ========================= CLIENT =========================
@@ -36,22 +52,28 @@ Route::resource('client/home', ClientsHomeController::class);
 Route::resource('client/product', ProductControllerr::class);
 Route::get('/product-detail/{slug}/{id}', [ProductControllerr::class, 'show'])->name('client.products.detailProducts');
 Route::get('client/order-tracking', [OrderController::class, 'orderTracking'])->name('client.order-tracking');
-
+Route::get('/order/{orderId}', [OrderController::class, 'showDetail'])->name('client.order.detail');
+/// comment
+Route::post('/comments', [CommentController::class, 'store'])
+    ->name('client.comments.store')
+    ->middleware('auth');
 // Cart
 // routes/web.php
 Route::prefix('client/carts')->name('client.carts.')->group(function () {
     Route::get('/', [CartController::class, 'index'])->name('index');
     Route::post('/add', [CartController::class, 'add'])->name('add');
-
-    Route::post('/update/{id}', [CartController::class, 'update'])->name('update');
-
+Route::post('/update/{id}', [CartController::class, 'updateQuantity'])->name('updateQuantity');
     Route::delete('/remove/{id}', [CartController::class, 'remove'])->name('remove');
     Route::delete('/clear', [CartController::class, 'clear'])->name('clear');
 });
-// Route::get('checkout', [CheckoutController::class, 'index'])->name('client.checkout.index');
-
+ // Checkout
+    Route::get('/checkout', [CheckoutController::class, 'showCheckoutPage'])->name('client.checkout');
+Route::post('/checkout', [CheckoutController::class, 'processOrder'])->name('client.checkout.process');
+Route::get('/checkout/success', function () {
+    return view('client.checkout.success');
+})->name('client.checkout.success');
 // ========================= ADMIN =========================
-Route::prefix('admin')->name('admin.')->group(function () {
+Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
 
     // Categories
@@ -101,4 +123,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::delete('{id}/force-delete', [CouponController::class, 'forceDelete'])->name('forceDelete');
     });
     Route::resource('coupons', CouponController::class);
+Route::prefix('comments')->name('comments.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Admin\CommentController::class, 'index'])->name('index');
+        Route::post('{id}/approve', [\App\Http\Controllers\Admin\CommentController::class, 'approve'])->name('approve');
+        Route::post('{id}/reject', [\App\Http\Controllers\Admin\CommentController::class, 'reject'])->name('reject');
+        Route::delete('{id}', [\App\Http\Controllers\Admin\CommentController::class, 'destroy'])->name('destroy');
+    });
+
 });
